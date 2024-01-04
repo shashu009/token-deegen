@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.18;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+
+contract degenToken is ERC20, Ownable {
+    event SuitRedeemed(address indexed account, uint8 suit, uint256 suitCost);
+    event SuitAdded(uint8 suitNumber, uint256 suitCost);
+    event SuitEnhanced(address indexed account, uint8 suit, uint256 enhancementCost);
+
+    mapping(address => uint8) public SelectedSuits;
+    mapping(uint8 => uint256) public suitCosts;
+
+    
+    constructor() ERC20("degenToken", "DGN") Ownable(msg.sender) {
+        // Default suit costs
+        suitCosts[1] = 10; // Cost of "Casual Suit"
+        suitCosts[2] = 20; // Cost of "Business Attire"
+        suitCosts[3] = 30; // Cost of "Formal Tuxedo"
+        suitCosts[4] = 40; // Cost of "Superhero Costume"
+    }
+
+    function mintFunction(address to, uint256 weigh) external onlyOwner {
+        _mint(to, weigh);
+    }
+
+    function burnFunction(uint256 weigh) external {
+        require(weigh > 0, "The count of tokens to destroy must be greater than zero");
+        require(balanceOf(msg.sender) >= weigh, "Insufficient funds for suit destruction");
+        _burn(msg.sender, weigh);
+    }
+
+    function redeemFunction(uint8 suitNumber) external {
+        require(suitNumber >= 1 && suitNumber <= 4, "Invalid suit number");
+
+        uint256 suitCost = suitCosts[suitNumber];
+
+        require(balanceOf(msg.sender) >= suitCost, "Insufficient funds for suit redemption");
+        _burn(msg.sender, suitCost);
+
+        SelectedSuits[msg.sender] = suitNumber;
+        emit SuitRedeemed(msg.sender, suitNumber, suitCost);
+    }
+
+    function transferFunction(address recipient, uint256 count) external {
+        require(recipient != address(0), "Invalid recipient address provided");
+        require(balanceOf(msg.sender) >= count, "Insufficient funds for suit transfer");
+        _transfer(msg.sender, recipient, count);
+    }
+
+    function addSuit(uint8 suitNumber, uint256 suitCost) external onlyOwner {
+        require(suitNumber >= 5, "Suit number must be 5 or greater");
+        require(suitCost > 0, "Suit cost must be greater than zero");
+
+        suitCosts[suitNumber] = suitCost;
+        emit SuitAdded(suitNumber, suitCost);
+    }
+
+    
+    function enhanceSuit(uint8 suitNumber, uint256 enhancementCost) external {
+        require(suitNumber >= 1 && suitNumber <= 4, "Invalid suit number");
+        require(enhancementCost > 0, "Enhancement cost must be greater than zero");
+        require(SelectedSuits[msg.sender] == suitNumber, "You must select the suit before enhancing it");
+        require(balanceOf(msg.sender) >= enhancementCost, "Insufficient funds for suit enhancement");
+
+        _burn(msg.sender, enhancementCost);
+        emit SuitEnhanced(msg.sender, suitNumber, enhancementCost);
+    }
+}
